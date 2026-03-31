@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kenosha Foreclosure Tracker — Windy City Property Partners</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0d0f14; --surface:#13161d; --surface2:#1a1e28; --border:#252a38;
+  --accent:#e8a838; --green:#3ecf8e; --red:#f06060; --yellow:#e8c94a;
+  --purple:#a78bfa; --text:#e4e8f0; --muted:#7a8299;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;min-height:100vh;font-size:13px}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer;font-family:inherit}
+input,textarea{font-family:inherit}
+
+/* HEADER */
+#header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;position:sticky;top:0;z-index:100}
+#header h1{font-family:'DM Serif Display',serif;font-size:20px;color:var(--text)}
+#header .sub{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.live-badge{background:rgba(62,207,142,0.1);border:1px solid rgba(62,207,142,0.3);color:var(--green);font-size:11px;padding:4px 10px;border-radius:4px;display:flex;align-items:center;gap:5px}
+.live-dot{width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* API KEY BANNER */
+#api-banner{background:rgba(232,168,56,0.07);border-bottom:1px solid rgba(232,168,56,0.2);padding:10px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#api-banner label{font-size:11px;color:var(--accent)}
+#api-key-input{background:#0d0f14;border:1px solid rgba(232,168,56,0.4);color:var(--text);padding:6px 10px;border-radius:5px;font-size:12px;font-family:inherit;width:340px;outline:none}
+#api-save-btn{background:rgba(232,168,56,0.15);border:1px solid rgba(232,168,56,0.4);color:var(--accent);padding:6px 14px;border-radius:5px;font-size:11px}
+#api-status{font-size:11px;color:var(--green)}
+#api-banner.hidden{display:none}
+
+/* MAIN */
+#main{max-width:980px;margin:0 auto;padding:18px 16px}
+
+/* STATS */
+#stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:18px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.stat-card .slabel{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.stat-card .sval{font-size:18px;font-weight:600}
+.stat-card .ssub{font-size:9px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* QUICK LINKS */
+#quicklinks{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}
+.ql{background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:11px;padding:5px 11px;border-radius:6px;transition:border-color 0.15s}
+.ql:hover{border-color:var(--accent);color:var(--accent)}
+
+/* MONTH DIVIDER */
+.month-div{display:flex;align-items:center;gap:12px;margin:18px 0 10px}
+.month-div h3{font-family:'DM Serif Display',serif;font-size:18px;white-space:nowrap}
+.month-div .count{background:rgba(232,168,56,0.1);border:1px solid rgba(232,168,56,0.25);color:var(--accent);font-size:10px;padding:2px 8px;border-radius:4px}
+.month-div .line{flex:1;height:1px;background:var(--border)}
+
+/* PROPERTY CARD */
+.prop-card{border-radius:10px;margin-bottom:12px;overflow:hidden;transition:border-color 0.2s}
+.prop-card.normal{background:var(--surface);border:1px solid var(--border)}
+.prop-card.flagged{background:#1a1010;border:1px solid #5a2020}
+.prop-card.analyzed{border-color:rgba(62,207,142,0.25)}
+
+.card-head{display:grid;grid-template-columns:64px 1fr auto;gap:12px;padding:14px 16px;cursor:pointer;align-items:center}
+.card-head:hover{background:rgba(255,255,255,0.02)}
+.date-block{text-align:center}
+.date-mo{color:var(--accent);font-size:18px;font-weight:600}
+.date-yr{color:var(--muted);font-size:10px}
+.prop-addr{font-size:14px;font-weight:600;font-family:'DM Serif Display',serif;letter-spacing:0.3px}
+.prop-def{color:var(--muted);font-size:11px;margin-top:2px}
+.prop-pills{display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;align-items:center}
+.pill{font-size:10px;padding:1px 7px;border-radius:3px}
+.pill-case{color:var(--accent)}
+.pill-bid{background:rgba(62,207,142,0.1);border:1px solid rgba(62,207,142,0.2);color:var(--green)}
+.pill-jdg{background:var(--surface2);border:1px solid var(--border);color:var(--muted)}
+.pill-val{background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.2);color:var(--purple)}
+.pill-ai{color:var(--green);font-size:10px}
+.pill-notes{font-size:11px}
+.status-badge{background:rgba(62,207,142,0.1);border:1px solid rgba(62,207,142,0.3);color:var(--green);font-size:10px;padding:3px 8px;border-radius:4px;white-space:nowrap}
+.save-indicator{font-size:9px;margin-top:4px}
+.save-saving{color:var(--muted)}
+.save-ok{color:var(--green)}
+.save-err{color:var(--red)}
+.chevron{color:var(--muted);font-size:12px;margin-top:4px}
+
+/* EXPANDED BODY */
+.card-body{display:none;border-top:1px solid var(--border);padding:14px 16px}
+.card-body.open{display:block}
+
+/* FLAGS */
+.flags-row{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+.flag{font-size:10px;padding:4px 10px;border-radius:4px}
+.flag-warn{background:rgba(240,96,96,0.1);border:1px solid rgba(240,96,96,0.3);color:var(--red)}
+.flag-caution{background:rgba(232,201,74,0.08);border:1px solid rgba(232,201,74,0.25);color:var(--yellow)}
+.flag-ok{background:rgba(62,207,142,0.1);border:1px solid rgba(62,207,142,0.3);color:var(--green)}
+
+/* BID PANEL */
+.bid-panel{background:#0d0f14;border:1px solid var(--border);border-radius:8px;margin-bottom:12px}
+.panel-header{padding:9px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
+.panel-title{font-size:11px}
+.panel-links{display:flex;gap:6px}
+.plink{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:10px;padding:4px 9px;border-radius:4px}
+.plink:hover{border-color:var(--accent);color:var(--accent)}
+.bid-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px;padding-bottom:0}
+.bid-grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 14px;margin-top:8px}
+.bid-cell{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:10px 12px}
+.bid-cell.spread-pos{border-color:rgba(62,207,142,0.4)}
+.bid-cell.spread-thin{border-color:rgba(232,201,74,0.4)}
+.bid-cell.spread-neg{border-color:rgba(240,96,96,0.4)}
+.cell-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}
+.cell-val{font-size:18px;font-weight:600}
+.cell-sub{font-size:9px;color:var(--muted);margin-top:2px}
+.editable-val{cursor:pointer}
+.editable-val:hover .cell-val{opacity:0.7}
+.edit-form input{width:100%;background:#0d0f14;border:1px solid rgba(62,207,142,0.4);color:var(--text);padding:5px 8px;border-radius:4px;outline:none;font-size:13px;font-family:inherit}
+.edit-btns{display:flex;gap:6px;margin-top:6px}
+.btn-save{background:rgba(62,207,142,0.1);border:1px solid rgba(62,207,142,0.3);color:var(--green);font-size:10px;padding:4px 10px;border-radius:4px}
+.btn-cancel{background:transparent;border:1px solid var(--border);color:var(--muted);font-size:10px;padding:4px 8px;border-radius:4px}
+.jdg-gap{margin:10px 14px;border-radius:6px;padding:8px 12px;font-size:11px}
+.jdg-gap.pos{background:rgba(232,201,74,0.07);border:1px solid rgba(232,201,74,0.25);color:var(--yellow)}
+.jdg-gap.neg{background:rgba(240,96,96,0.07);border:1px solid rgba(240,96,96,0.25);color:var(--red)}
+.jdg-gap.zero{background:rgba(62,207,142,0.07);border:1px solid rgba(62,207,142,0.2);color:var(--green)}
+.spread-bar-wrap{padding:0 14px 14px}
+.bar-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:4px}
+.bar-track{height:8px;background:var(--border);border-radius:4px;overflow:hidden;position:relative}
+.bar-fill{height:100%;border-radius:4px;transition:width 0.7s ease}
+.bar-jdg-tick{position:absolute;top:0;width:2px;height:100%;background:var(--muted);z-index:2}
+.bar-verdict{font-size:10px;color:var(--muted);margin-top:4px}
+.chrome-hint{padding:0 14px 14px}
+.chrome-hint summary{font-size:10px;color:var(--muted);cursor:pointer;user-select:none}
+.chrome-prompt{background:#0d0f14;border:1px solid rgba(232,168,56,0.2);border-radius:4px;padding:10px 12px;color:var(--text);font-size:10px;white-space:pre-wrap;user-select:all;line-height:1.6;margin-top:8px}
+
+/* ACTION BUTTONS */
+.action-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.btn-tax{background:rgba(232,201,74,0.08);border:1px solid rgba(232,201,74,0.25);color:var(--yellow);font-size:11px;padding:7px 14px;border-radius:6px}
+.btn-tax.active{background:rgba(232,201,74,0.15);border-color:rgba(232,201,74,0.5)}
+.btn-analyze{background:rgba(62,207,142,0.08);border:1px solid rgba(62,207,142,0.3);color:var(--green);font-size:11px;padding:7px 14px;border-radius:6px}
+.btn-reanalyze{background:transparent;border:1px solid var(--border);color:var(--muted);font-size:10px;padding:6px 12px;border-radius:6px}
+.btn-retry{background:rgba(240,96,96,0.1);border:1px solid rgba(240,96,96,0.3);color:var(--red);font-size:10px;padding:4px 10px;border-radius:4px}
+.analyzing-row{display:flex;align-items:center;gap:8px}
+.spinner{width:14px;height:14px;border:2px solid rgba(62,207,142,0.3);border-top:2px solid var(--green);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.err-msg{color:var(--red);font-size:10px}
+
+/* TAX PANEL */
+.tax-panel{background:#0d0f14;border:1px solid var(--border);border-radius:8px;margin-bottom:12px}
+.tax-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 14px}
+.tax-cell{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:9px 11px}
+.tax-warn{background:rgba(232,201,74,0.06);border:1px solid rgba(232,201,74,0.2);border-radius:6px;padding:8px 12px;margin:0 14px 10px;font-size:11px;color:#c8b85a}
+.btn-tax-check{background:rgba(232,201,74,0.1);border:1px solid rgba(232,201,74,0.3);color:var(--yellow);font-size:11px;padding:8px 16px;border-radius:6px;margin:0 14px 14px}
+
+/* RESEARCH TABS */
+.research-wrap{margin-bottom:14px}
+.research-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.tab-bar{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
+.tab-btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:10px;padding:5px 12px;border-radius:5px}
+.tab-btn.active{background:rgba(232,168,56,0.15);border-color:rgba(232,168,56,0.5);color:var(--accent)}
+.links-grid{display:flex;flex-wrap:wrap;gap:7px}
+.res-link{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:10px;padding:6px 11px;border-radius:5px;display:flex;align-items:center;gap:5px}
+.res-link:hover{border-color:var(--accent);color:var(--accent)}
+
+/* AI ANALYSIS PANEL */
+.analysis-panel{background:#0d0f14;border:1px solid var(--border);border-radius:8px;margin-bottom:4px}
+.analysis-header{padding:9px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
+.analysis-title{color:var(--accent);font-size:11px}
+.analysis-saved{color:var(--green);font-size:10px}
+.analysis-body{padding:13px 14px;font-size:12px;line-height:1.75;white-space:pre-wrap;color:var(--text)}
+
+/* NOTES BOX */
+.notes-box{background:#0d0f14;border:1px solid var(--border);border-radius:8px;margin-top:14px;transition:border-color 0.3s}
+.notes-box.flash{border-color:rgba(62,207,142,0.4)}
+.notes-header{padding:9px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.notes-title{color:var(--accent);font-size:11px}
+.notes-btns{display:flex;gap:6px;align-items:center}
+.btn-edit{background:rgba(232,168,56,0.1);border:1px solid rgba(232,168,56,0.3);color:var(--accent);font-size:10px;padding:4px 10px;border-radius:4px}
+.btn-save-notes{background:rgba(62,207,142,0.1);border:1px solid rgba(62,207,142,0.3);color:var(--green);font-size:10px;padding:4px 10px;border-radius:4px}
+.btn-cancel-notes{background:transparent;border:1px solid var(--border);color:var(--muted);font-size:10px;padding:4px 8px;border-radius:4px}
+.notes-body{padding:12px 14px}
+.notes-text{font-size:12px;color:var(--text);line-height:1.7;white-space:pre-wrap}
+.notes-empty{font-size:11px;color:var(--muted);font-style:italic}
+.notes-textarea{width:100%;min-height:90px;background:#13161d;border:1px solid rgba(232,168,56,0.3);border-radius:6px;color:var(--text);font-family:inherit;font-size:12px;padding:9px 11px;resize:vertical;outline:none;line-height:1.6}
+.saved-flash{color:var(--green);font-size:10px}
+
+/* FOOTER */
+#footer{text-align:center;color:var(--muted);font-size:10px;margin-top:24px;padding-top:14px;border-top:1px solid var(--border)}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div>
+    <h1>🏛️ Kenosha Foreclosure Tracker</h1>
+    <div class="sub">Kenosha County Sheriff Sales · Windy City Property Partners · v8</div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <div class="live-badge"><div class="live-dot"></div> LIVE</div>
+    <a class="ql" href="https://apps.kenoshacounty.org/SheriffSales" target="_blank">Official Source ↗</a>
+  </div>
+</div>
+
+<div id="api-banner">
+  <label>🔑 Anthropic API Key (saved to your browser — never sent anywhere else):</label>
+  <input id="api-key-input" type="password" placeholder="sk-ant-api03-..." />
+  <button id="api-save-btn" onclick="saveApiKey()">Save Key</button>
+  <span id="api-status"></span>
+  <span style="font-size:10px;color:var(--muted);margin-left:8px">Get your key at console.anthropic.com</span>
+</div>
+
+<div id="main">
+  <div id="stats"></div>
+  <div id="quicklinks"></div>
+  <div id="listings"></div>
+  <div id="footer">Windy City Property Partners Inc. · 77 W. Washington Suite 1716, Chicago IL 60602 · 312-726-4220</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// KENOSHA FORECLOSURE TRACKER v8
+// Self-contained HTML — real localStorage — your API key
+// ═══════════════════════════════════════════════
+
+const LISTINGS = [
+  {saleDate:"2026-04-15",caseNo:"2025CV000254",defendant:"Janelle J Allen and John Doe Allen",parcel:"83-4-223-184-1020",address:"1737 12th Ave",city:"Kenosha",state:"WI",zip:"53140",status:"Active",docId:"11941480"},
+  {saleDate:"2026-04-15",caseNo:"2025CV000920",defendant:"Jeffrey W Kless et al",parcel:"08-222-35-412-015",address:"4020 55th St",city:"Kenosha",state:"WI",zip:"53144",status:"Active",docId:"11941482"},
+  {saleDate:"2026-04-22",caseNo:"2023CV000650",defendant:"Roberta Lynn Shirley et al",parcel:"03-122-06-118-184",address:"10907 65th St",city:"Kenosha",state:"WI",zip:"53142",status:"Active",docId:"11941483"},
+  {saleDate:"2026-04-29",caseNo:"2024CV1435",defendant:"Juan Ramon Contreras Jr et al",parcel:"01-122-01-431-011",address:"6838 29th Ave",city:"Kenosha",state:"WI",zip:"53143",status:"Active",docId:"11960214"},
+  {saleDate:"2026-05-06",caseNo:"2024CV000062",defendant:"Tanya Patterson et al",parcel:"03-122-03-104-027",address:"6022 59th Ave",city:"Kenosha",state:"WI",zip:"53142",status:"Active",docId:"11957336"},
+  {saleDate:"2026-05-06",caseNo:"2024CV000961",defendant:"Rebeca Erickson et al",parcel:"06-123-07-208-002",address:"7607 15th Ave",city:"Kenosha",state:"WI",zip:"53143",status:"Active",docId:"11966726"},
+  {saleDate:"2026-05-06",caseNo:"2025CV000523",defendant:"Jason J Kublik",parcel:"95-4-119-111-3215",address:"7838 334th Ave",city:"Burlington",state:"WI",zip:"53105",status:"Active",docId:"11966725"},
+  {saleDate:"2026-05-06",caseNo:"2025CV001159",defendant:"Thomas Angeloff Jr et al",parcel:"01-122-01-160-015",address:"6622 26th Ave",city:"Kenosha",state:"WI",zip:"53143",status:"Active",docId:"11959701"},
+  {saleDate:"2026-05-13",caseNo:"2025CV000235",defendant:"Renee J. Andrzejewski, et al",parcel:"92-4-122-343-0930",address:"6505 126th St",city:"Pleasant Prairie",state:"WI",zip:"53158",status:"Active",docId:"11961740"},
+  {saleDate:"2026-05-20",caseNo:"2025CV000502",defendant:"Nicole Belliveau et al",parcel:"09-222-36-206-006",address:"4823 33rd Ave",city:"Kenosha",state:"WI",zip:"53144",status:"Active",docId:"11966727"},
+];
+
+// ─── HELPERS ───────────────────────────────────
+function fullAddr(p){return `${p.address}, ${p.city}, ${p.state} ${p.zip}`}
+function caseYear(cn){const m=cn.match(/^(\d{4})/);return m?parseInt(m[1]):null}
+function fmt(n){return n!=null?"$"+Number(n).toLocaleString():null}
+function parseMoney(s){const n=parseFloat(String(s).replace(/[$,\s]/g,""));return isNaN(n)?null:n}
+
+// ─── localStorage (real persistence) ──────────
+const LS_KEY = "kenosha_v8";
+const LS_API  = "kenosha_apikey";
+
+function loadAll(){try{return JSON.parse(localStorage.getItem(LS_KEY)||"{}")}catch{return{}}}
+function saveAll(d){try{localStorage.setItem(LS_KEY,JSON.stringify(d))}catch{}}
+
+let STORE = loadAll();
+
+function getProp(caseNo){return STORE[caseNo]||{openingBid:null,judgmentAmt:null,estValue:null,myValue:null,analysis:null,analysisDate:null,notes:""}}
+function setProp(caseNo,patch){
+  STORE[caseNo]={...getProp(caseNo),...patch};
+  saveAll(STORE);
+  updateStats();
+}
+
+// ─── API KEY ──────────────────────────────────
+function getApiKey(){return localStorage.getItem(LS_API)||""}
+function saveApiKey(){
+  const k=document.getElementById("api-key-input").value.trim();
+  if(!k){alert("Paste your Anthropic API key first.");return}
+  localStorage.setItem(LS_API,k);
+  document.getElementById("api-status").textContent="✓ Key saved";
+  document.getElementById("api-status").style.color="var(--green)";
+  setTimeout(()=>document.getElementById("api-status").textContent="",3000);
+}
+function initApiKey(){
+  const k=getApiKey();
+  if(k){
+    document.getElementById("api-key-input").value=k;
+    document.getElementById("api-status").textContent="✓ Key loaded";
+    document.getElementById("api-status").style.color="var(--green)";
+  }
+}
+
+// ─── RESEARCH LINKS ──────────────────────────
+function buildLinks(p){
+  const ae=encodeURIComponent(fullAddr(p));
+  const zq=encodeURIComponent(`${p.address} ${p.city} ${p.state} ${p.zip}`);
+  const rc=p.city.replace(/ /g,"-");
+  const gq=encodeURIComponent(`${fullAddr(p)} foreclosure`);
+  const nq=encodeURIComponent(`${p.address} ${p.city} WI`);
+  return {
+    "Official":[
+      {i:"🏛️",l:"Sheriff Sales List",h:"https://apps.kenoshacounty.org/SheriffSales"},
+      {i:"📄",l:"Sale Document",h:`https://apps.kenoshacounty.org/SheriffSales/Home/GetImage?imageID=${p.docId}`},
+      {i:"📋",l:"County Parcel Info",h:`https://propertyinfo.kenoshacounty.org/Search/RealEstate/Search/ParcelRedirect?ParcelNumber=${p.parcel}`},
+      {i:"⚖️",l:"WCCA Court Record",h:`http://wcca.wicourts.gov/caseDetails.do?countyNo=30&caseNo=${p.caseNo}`},
+      {i:"💰",l:"Delinquent Taxes",h:"https://www.kenoshacountywi.gov/1976/Delinquent-Taxes"},
+      {i:"🗺️",l:"County GIS Map",h:"https://gis.kenoshacounty.org"},
+      {i:"🔍",l:"Building Permits",h:"https://aca.kenoshacounty.org"},
+      {i:"📜",l:"Register of Deeds",h:"https://www.kenoshacountywi.gov/547/Register-of-Deeds"},
+    ],
+    "Market Value":[
+      {i:"🏡",l:"Zillow",h:`https://www.zillow.com/homes/${zq}_rb/`},
+      {i:"🔴",l:"Redfin",h:`https://www.redfin.com/WI/${rc}/`},
+      {i:"📊",l:"Realtor.com",h:`https://www.realtor.com/realestateandhomes-search/${p.city.replace(/ /g,"-")}_WI/`},
+      {i:"🏦",l:"Trulia",h:`https://www.trulia.com/WI/${p.city.replace(/ /g,"_")}/`},
+      {i:"🔖",l:"Eppraisal",h:`https://www.eppraisal.com/home-values/search/?address=${zq}`},
+    ],
+    "Title & Liens":[
+      {i:"📜",l:"Title Check WI",h:`https://titlecheck.us/search?state=WI&address=${ae}`},
+      {i:"📑",l:"Register of Deeds",h:"https://www.kenoshacountywi.gov/547/Register-of-Deeds"},
+      {i:"⚖️",l:"WCCA Case Detail",h:`http://wcca.wicourts.gov/caseDetails.do?countyNo=30&caseNo=${p.caseNo}`},
+      {i:"🏛️",l:"WI Circuit Court",h:"https://wcca.wicourts.gov"},
+    ],
+    "Maps":[
+      {i:"🌐",l:"Google Maps",h:`https://maps.google.com/?q=${ae}`},
+      {i:"📷",l:"Street View",h:`https://maps.google.com/?q=${ae}&layer=c`},
+      {i:"🛰️",l:"Satellite View",h:`https://maps.google.com/?q=${ae}&t=k`},
+      {i:"🗺️",l:"County GIS",h:"https://gis.kenoshacounty.org"},
+      {i:"🏘️",l:"Walk Score",h:`https://www.walkscore.com/score/${ae}`},
+    ],
+    "Research":[
+      {i:"🔍",l:"Google Search",h:`https://www.google.com/search?q=${gq}`},
+      {i:"📰",l:"Kenosha News",h:`https://www.kenoshanews.com/search/?q=${nq}`},
+      {i:"🏘️",l:"NeighborhoodScout",h:"https://www.neighborhoodscout.com/wi/kenosha"},
+      {i:"🚨",l:"Crime Map",h:"https://www.crimemapping.com/map/WI/Kenosha"},
+      {i:"🏫",l:"School Ratings",h:"https://www.greatschools.org/wisconsin/kenosha/"},
+      {i:"💼",l:"Census / Zip",h:`https://data.census.gov/profile?q=${p.zip}`},
+    ],
+  };
+}
+
+// ─── FLAGS ────────────────────────────────────
+function getFlags(p,d){
+  const yr=caseYear(p.caseNo);
+  const flags=[];
+  if(yr&&yr<=2023) flags.push({t:"warn",tx:`⚠️ Long foreclosure (filed ${yr}) — title complications possible`});
+  if(yr&&yr<=2022) flags.push({t:"warn",tx:"🔨 Likely needs major updates (extended distress period)"});
+  if(yr&&yr===2024) flags.push({t:"caution",tx:"⏳ 2024 case — verify no postponements"});
+  flags.push({t:"caution",tx:"💰 Verify delinquent tax balance before bidding"});
+  if(d.openingBid&&d.judgmentAmt&&d.openingBid>d.judgmentAmt)
+    flags.push({t:"caution",tx:`📋 Bid exceeds judgment by ${fmt(d.openingBid-d.judgmentAmt)} — added costs`});
+  const val=d.myValue||d.estValue;
+  if(d.openingBid&&val){
+    const pct=Math.round((d.openingBid/val)*100);
+    const spr=val-d.openingBid;
+    if(pct>=90)      flags.push({t:"warn",   tx:`🚫 Bid is ${pct}% of value — no margin`});
+    else if(pct>=75) flags.push({t:"caution",tx:`📊 Bid is ${pct}% of value — thin margin (${fmt(spr)} spread)`});
+    else             flags.push({t:"ok",     tx:`✅ Bid is ${pct}% of value — ${fmt(spr)} potential spread`});
+  }
+  return flags;
+}
+
+// ─── STATS ────────────────────────────────────
+function updateStats(){
+  const analyzed=LISTINGS.filter(p=>getProp(p.caseNo).analysis).length;
+  const bids=LISTINGS.filter(p=>getProp(p.caseNo).openingBid!=null).length;
+  const noted=LISTINGS.filter(p=>getProp(p.caseNo).notes?.trim()).length;
+  const flagged=LISTINGS.filter(p=>{const y=caseYear(p.caseNo);return y&&y<=2023}).length;
+  const upcoming=LISTINGS.filter(p=>new Date(p.saleDate+"T12:00:00")>=new Date()).sort((a,b)=>a.saleDate.localeCompare(b.saleDate));
+  const nxt=upcoming[0];
+  const nxtD=nxt?new Date(nxt.saleDate+"T12:00:00"):null;
+  const nxtStr=nxtD?nxtD.toLocaleString("en-US",{month:"short"})+" "+nxtD.getDate():"—";
+
+  document.getElementById("stats").innerHTML=[
+    {l:"Active Sales",v:LISTINGS.length,c:"var(--accent)",s:""},
+    {l:"Next Sale",v:nxtStr,c:"var(--text)",s:nxt?.address||""},
+    {l:"⚠ Flagged",v:flagged,c:"var(--red)",s:""},
+    {l:"🤖 Analyzed",v:`${analyzed}/10`,c:analyzed===10?"var(--green)":"var(--accent)",s:""},
+    {l:"🏷️ Bids",v:`${bids}/10`,c:bids===10?"var(--green)":"var(--muted)",s:""},
+    {l:"📝 Notes",v:noted,c:noted>0?"var(--green)":"var(--muted)",s:""},
+  ].map(s=>`<div class="stat-card">
+    <div class="slabel">${s.l}</div>
+    <div class="sval" style="color:${s.c}">${s.v}</div>
+    ${s.s?`<div class="ssub">${s.s}</div>`:""}
+  </div>`).join("");
+
+  // Re-render card headers to reflect updated data
+  LISTINGS.forEach(p=>{
+    const head=document.getElementById(`head-${p.caseNo}`);
+    if(head) updateCardHeader(p,head);
+  });
+}
+
+function updateCardHeader(p,head){
+  const d=getProp(p.caseNo);
+  const mo=new Date(p.saleDate+"T12:00:00").toLocaleString("en-US",{month:"short"});
+  const day=new Date(p.saleDate+"T12:00:00").getDate();
+  const yr2=new Date(p.saleDate+"T12:00:00").getFullYear();
+  const pills=[
+    `<span class="pill pill-case">${p.caseNo}</span>`,
+    d.openingBid!=null?`<span class="pill pill-bid">Bid: ${fmt(d.openingBid)}</span>`:"",
+    d.judgmentAmt!=null?`<span class="pill pill-jdg">Jdgmt: ${fmt(d.judgmentAmt)}</span>`:"",
+    d.myValue!=null?`<span class="pill pill-val">My Val: ${fmt(d.myValue)}</span>`:"",
+    d.analysis?`<span class="pill pill-ai">🤖 ${d.analysisDate}</span>`:"",
+    d.notes?.trim()?`<span class="pill pill-notes">📝</span>`:"",
+  ].filter(Boolean).join("");
+  head.querySelector(".prop-pills").innerHTML=pills;
+}
+
+// ─── RENDER QUICK LINKS ───────────────────────
+function renderQuickLinks(){
+  document.getElementById("quicklinks").innerHTML=[
+    {l:"🏛️ Official Sales",h:"https://apps.kenoshacounty.org/SheriffSales"},
+    {l:"💰 Delinquent Taxes",h:"https://www.kenoshacountywi.gov/1976/Delinquent-Taxes"},
+    {l:"📋 County Property",h:"https://propertyinfo.kenoshacounty.org"},
+    {l:"⚖️ WCCA Courts",h:"https://wcca.wicourts.gov"},
+    {l:"🗺️ County GIS",h:"https://gis.kenoshacounty.org"},
+    {l:"🏡 Zillow Kenosha WI",h:"https://www.zillow.com/kenosha-wi/"},
+    {l:"🔴 Redfin Kenosha WI",h:"https://www.redfin.com/WI/Kenosha/"},
+    {l:"🔍 Permits",h:"https://aca.kenoshacounty.org"},
+  ].map(l=>`<a class="ql" href="${l.h}" target="_blank">${l.l}</a>`).join("");
+}
+
+// ─── RENDER LISTINGS ──────────────────────────
+function renderListings(){
+  const groups={};
+  LISTINGS.forEach(p=>{
+    const d=new Date(p.saleDate+"T12:00:00");
+    const k=d.toLocaleString("en-US",{month:"long",year:"numeric"});
+    if(!groups[k])groups[k]=[];
+    groups[k].push(p);
+  });
+  let html="";
+  for(const [month,props] of Object.entries(groups)){
+    html+=`<div class="month-div"><h3>${month}</h3><span class="count">${props.length} listings</span><div class="line"></div></div>`;
+    props.forEach(p=>{html+=renderCard(p)});
+  }
+  document.getElementById("listings").innerHTML=html;
+  LISTINGS.forEach(p=>bindCard(p));
+}
+
+function renderCard(p){
+  const d=getProp(p.caseNo);
+  const yr=caseYear(p.caseNo);
+  const flags=getFlags(p,d);
+  const isFlagged=flags.some(f=>f.t==="warn");
+  const hasAnalysis=!!d.analysis;
+  const mo=new Date(p.saleDate+"T12:00:00").toLocaleString("en-US",{month:"short"});
+  const day=new Date(p.saleDate+"T12:00:00").getDate();
+  const yr2=new Date(p.saleDate+"T12:00:00").getFullYear();
+  const cls=["prop-card",isFlagged?"flagged":"normal",hasAnalysis?"analyzed":""].filter(Boolean).join(" ");
+  return `<div class="${cls}" id="card-${p.caseNo}">
+    <div class="card-head" id="head-${p.caseNo}" onclick="toggleCard('${p.caseNo}')">
+      <div class="date-block">
+        <div class="date-mo">${mo} ${day}</div>
+        <div class="date-yr">${yr2}</div>
+      </div>
+      <div>
+        <div class="prop-addr">${fullAddr(p)}</div>
+        <div class="prop-def">${p.defendant}</div>
+        <div class="prop-pills">
+          <span class="pill pill-case">${p.caseNo}</span>
+          ${d.openingBid!=null?`<span class="pill pill-bid">Bid: ${fmt(d.openingBid)}</span>`:""}
+          ${d.judgmentAmt!=null?`<span class="pill pill-jdg">Jdgmt: ${fmt(d.judgmentAmt)}</span>`:""}
+          ${d.myValue!=null?`<span class="pill pill-val">My Val: ${fmt(d.myValue)}</span>`:""}
+          ${d.analysis?`<span class="pill pill-ai">🤖 ${d.analysisDate}</span>`:""}
+          ${d.notes?.trim()?`<span class="pill pill-notes">📝</span>`:""}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        <span class="status-badge">${p.status}</span>
+        <span class="save-indicator" id="save-${p.caseNo}"></span>
+        <span class="chevron" id="chev-${p.caseNo}">▼</span>
+      </div>
+    </div>
+    <div class="card-body" id="body-${p.caseNo}">
+      ${renderCardBody(p)}
+    </div>
+  </div>`;
+}
+
+function renderCardBody(p){
+  const d=getProp(p.caseNo);
+  const yr=caseYear(p.caseNo);
+  const flags=getFlags(p,d);
+  const links=buildLinks(p);
+  const docUrl=`https://apps.kenoshacounty.org/SheriffSales/Home/GetImage?imageID=${p.docId}`;
+  const val=d.myValue||d.estValue;
+  const spread=d.openingBid!=null&&val!=null?val-d.openingBid:null;
+  const spreadPct=spread!=null?Math.round((spread/val)*100):null;
+  const bidPct=d.openingBid!=null&&val!=null?Math.round((d.openingBid/val)*100):null;
+  const jgap=d.openingBid!=null&&d.judgmentAmt!=null?d.openingBid-d.judgmentAmt:null;
+
+  const chromePrompt=`Open this Kenosha County sheriff sale document and find:\n1. The JUDGMENT AMOUNT\n2. The OPENING BID / MINIMUM BID (may include added attorney fees, advanced taxes, costs)\n3. List any additions above judgment\n\nDocument: ${docUrl}\nCase: ${p.caseNo} — ${fullAddr(p)}\n\nPaste results back into my Claude.ai chat.`;
+
+  // Flags HTML
+  const flagsHtml=flags.map(f=>`<span class="flag flag-${f.t}">${f.tx}</span>`).join("");
+
+  // Bid panel spread bar
+  let barFill="linear-gradient(90deg,#f06060,#c45c2a)";
+  if(spreadPct>25)barFill="linear-gradient(90deg,#3ecf8e,#e8a838)";
+  else if(spreadPct>10)barFill="linear-gradient(90deg,#e8c94a,#e8a838)";
+  const barVerdict=spreadPct>25?"🟢 Strong margin":spreadPct>10?"🟡 Thin — factor in repairs + taxes":"🔴 Little to no margin at this bid";
+
+  // Research tabs — default to Official
+  const tabHtml=Object.keys(links).map(t=>`<button class="tab-btn${t==="Official"?" active":""}" onclick="switchTab(this,'${p.caseNo}','${t}')">${t}</button>`).join("");
+  const linksHtml=links["Official"].map(l=>`<a class="res-link" href="${l.h}" target="_blank">${l.i} ${l.l}</a>`).join("");
+
+  // Analysis
+  const analysisHtml=d.analysis?`<div class="analysis-panel">
+    <div class="analysis-header">
+      <span class="analysis-title">🤖 AI Analysis — ${p.caseNo}</span>
+      <span class="analysis-saved">✓ saved ${d.analysisDate} · persists across sessions</span>
+    </div>
+    <div class="analysis-body">${d.analysis.replace(/</g,"&lt;")}</div>
+  </div>`:"";
+
+  // Notes
+  const notesContent=d.notes?.trim()
+    ?`<div class="notes-text">${d.notes.replace(/</g,"&lt;")}</div>`
+    :`<div class="notes-empty">No notes yet. Track comps, condition, bid strategy, contacts…</div>`;
+
+  return `
+  <div class="flags-row">${flagsHtml}</div>
+
+  <!-- BID PANEL -->
+  <div class="bid-panel">
+    <div class="panel-header">
+      <span class="panel-title" style="color:var(--green)">🏷️ Bid & Valuation Panel</span>
+      <div class="panel-links">
+        <a class="plink" href="${docUrl}" target="_blank">📄 Sale Doc ↗</a>
+        <a class="plink" href="http://wcca.wicourts.gov/caseDetails.do?countyNo=30&caseNo=${p.caseNo}" target="_blank">⚖️ WCCA ↗</a>
+      </div>
+    </div>
+    <div class="bid-grid">
+      ${editableCell(p.caseNo,"judgmentAmt","Judgment Amount",d.judgmentAmt,"var(--muted)","From WCCA / doc","original judgment")}
+      ${editableCell(p.caseNo,"openingBid","Opening Bid",d.openingBid,"var(--green)","From sale doc","auction start price")}
+      <div class="bid-cell${spread!=null?(spread>20000?" spread-pos":spread>0?" spread-thin":" spread-neg"):""}">
+        <div class="cell-label">Spread (Bid → Value)</div>
+        <div class="cell-val" style="color:${spread!=null?(spread>20000?"var(--green)":spread>0?"var(--yellow)":"var(--red)"):"var(--muted)"}">
+          ${spread!=null?fmt(spread):"<span style='font-size:12px'>—</span>"}
+        </div>
+        ${spreadPct!=null?`<div class="cell-sub">${spreadPct}% below ${d.myValue?"my value":"AI est."}</div>`:""}
+      </div>
+    </div>
+    <div class="bid-grid2">
+      <div class="bid-cell">
+        <div class="cell-label">🤖 AI Est. Market Value</div>
+        <div class="cell-val" style="color:${d.estValue!=null?"var(--accent)":"var(--muted)"}">
+          ${d.estValue!=null?fmt(d.estValue):`<span style="font-size:12px;color:var(--muted)">Run AI Analysis ↓</span>`}
+        </div>
+        ${d.estValue!=null?`<div class="cell-sub">from AI · auto-updated on analysis</div>`:""}
+      </div>
+      ${editableCell(p.caseNo,"myValue","📌 My Opinion of Value",d.myValue,"var(--purple)","Enter your valuation ✏️","your estimate · used for spread calc")}
+    </div>
+    ${jgap!=null?`<div class="jdg-gap ${jgap>0?"pos":jgap<0?"neg":"zero"}">
+      ${jgap>0?`📋 Opening bid is ${fmt(jgap)} above judgment — added costs (attorney fees, advanced taxes, publication, etc.)`
+        :jgap<0?`⚠️ Opening bid is ${fmt(Math.abs(jgap))} BELOW judgment — verify with plaintiff's attorney`
+        :`✅ Opening bid equals judgment amount`}
+    </div>`:""}
+    ${d.openingBid!=null&&val!=null?`<div class="spread-bar-wrap">
+      <div class="bar-labels">
+        <span>Bid: ${fmt(d.openingBid)}</span>
+        ${d.judgmentAmt!=null?`<span>Jdgmt: ${fmt(d.judgmentAmt)}</span>`:""}
+        <span>${d.myValue?"My Value":"AI Est."}: ${fmt(val)}</span>
+      </div>
+      <div class="bar-track">
+        ${d.judgmentAmt!=null&&val!=null?`<div class="bar-jdg-tick" style="left:${Math.min(98,(d.judgmentAmt/val)*100)}%"></div>`:""}
+        <div class="bar-fill" style="width:${Math.min(100,bidPct||0)}%;background:${barFill}"></div>
+      </div>
+      <div class="bar-verdict">${barVerdict}</div>
+    </div>`:""}
+    <div class="chrome-hint">
+      <details>
+        <summary>📋 Get bid + judgment via Claude for Chrome ▾</summary>
+        <div class="chrome-prompt">${chromePrompt}</div>
+      </details>
+    </div>
+  </div>
+
+  <!-- ACTION BUTTONS -->
+  <div class="action-row" id="actions-${p.caseNo}">
+    <button class="btn-tax" onclick="toggleTax('${p.caseNo}',this)">💰 Check Tax Panel</button>
+    ${!d.analysis?`<button class="btn-analyze" onclick="runAnalysis('${p.caseNo}')">🤖 Run AI Analysis</button>`
+      :`<button class="btn-reanalyze" onclick="runAnalysis('${p.caseNo}')">↻ Re-Analyze</button>`}
+  </div>
+
+  <!-- TAX PANEL (hidden by default) -->
+  <div id="tax-${p.caseNo}" style="display:none">
+    <div class="tax-panel">
+      <div class="panel-header">
+        <span class="panel-title" style="color:var(--yellow)">💰 Tax Status — ${p.parcel}</span>
+        <div class="panel-links">
+          <a class="plink" href="https://propertyinfo.kenoshacounty.org/Search/RealEstate/Search/ParcelRedirect?ParcelNumber=${p.parcel}" target="_blank">📋 County Portal ↗</a>
+          <a class="plink" href="https://www.kenoshacountywi.gov/1976/Delinquent-Taxes" target="_blank">🏛️ Delinquent ↗</a>
+        </div>
+      </div>
+      <div class="tax-warn">
+        <strong>WI Law:</strong> 1% interest + 0.5% penalty/month from Feb 1. Taxes survive the sale — buyer's responsibility. Call Treasurer: <strong>262-653-2622</strong>
+      </div>
+      <div id="tax-content-${p.caseNo}" style="padding:0 14px 14px">
+        <button class="btn-tax-check" style="margin:0" onclick="runTaxCheck('${p.caseNo}')">🔍 AI Tax Estimate</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESEARCH TABS -->
+  <div class="research-wrap">
+    <div class="research-label">🔗 Research Links</div>
+    <div class="tab-bar" id="tabs-${p.caseNo}">${tabHtml}</div>
+    <div class="links-grid" id="links-${p.caseNo}">${linksHtml}</div>
+  </div>
+
+  <!-- AI ANALYSIS (saved) -->
+  <div id="analysis-${p.caseNo}">${analysisHtml}</div>
+
+  <!-- NOTES -->
+  <div class="notes-box" id="notes-box-${p.caseNo}">
+    <div class="notes-header">
+      <span class="notes-title">📝 My Notes — ${p.caseNo}</span>
+      <div class="notes-btns" id="notes-btns-${p.caseNo}">
+        <button class="btn-edit" onclick="editNotes('${p.caseNo}')">${d.notes?.trim()?"✏️ Edit":"✏️ Add Notes"}</button>
+      </div>
+    </div>
+    <div class="notes-body" id="notes-body-${p.caseNo}">${notesContent}</div>
+  </div>`;
+}
+
+function editableCell(caseNo,field,label,value,color,placeholder,sublabel){
+  const display=value!=null
+    ?`<div class="cell-val" style="color:${color}">${fmt(value)}</div><div class="cell-sub">✏️ click to edit</div>`
+    :`<div class="cell-val" style="color:var(--muted);font-size:12px">${placeholder}</div>`;
+  return `<div class="bid-cell editable-val" onclick="startEdit(this,'${caseNo}','${field}','${label}','${color}','${placeholder}','${sublabel}')">
+    <div class="cell-label">${label}</div>
+    <div id="cell-${caseNo}-${field}">${display}</div>
+    ${sublabel&&value!=null?`<div class="cell-sub">${sublabel}</div>`:""}
+  </div>`;
+}
+
+// ─── CARD TOGGLE ──────────────────────────────
+function toggleCard(caseNo){
+  const body=document.getElementById(`body-${caseNo}`);
+  const chev=document.getElementById(`chev-${caseNo}`);
+  const open=body.classList.toggle("open");
+  chev.textContent=open?"▲":"▼";
+}
+
+// ─── INLINE EDITING ───────────────────────────
+function startEdit(cell,caseNo,field,label,color,placeholder,sublabel){
+  const cur=getProp(caseNo)[field];
+  const inner=document.getElementById(`cell-${caseNo}-${field}`);
+  inner.innerHTML=`<div class="edit-form">
+    <input type="text" id="ei-${caseNo}-${field}" value="${cur!=null?cur:""}" placeholder="e.g. 125000" />
+    <div class="edit-btns">
+      <button class="btn-save" onclick="saveEdit('${caseNo}','${field}','${color}','${sublabel}')">💾 Save</button>
+      <button class="btn-cancel" onclick="cancelEdit('${caseNo}','${field}','${color}','${sublabel}')">✕</button>
+    </div>
+  </div>`;
+  const inp=document.getElementById(`ei-${caseNo}-${field}`);
+  inp.focus();
+  inp.addEventListener("keydown",e=>{
+    if(e.key==="Enter")saveEdit(caseNo,field,color,sublabel);
+    if(e.key==="Escape")cancelEdit(caseNo,field,color,sublabel);
+  });
+}
+
+function saveEdit(caseNo,field,color,sublabel){
+  const inp=document.getElementById(`ei-${caseNo}-${field}`);
+  if(!inp)return;
+  const val=parseMoney(inp.value);
+  setProp(caseNo,{[field]:val});
+  flashSave(caseNo);
+  redrawBidPanel(caseNo);
+  redrawFlags(caseNo);
+  updateCardHeader(LISTINGS.find(p=>p.caseNo===caseNo),document.getElementById(`head-${caseNo}`));
+}
+
+function cancelEdit(caseNo,field,color,sublabel){
+  const val=getProp(caseNo)[field];
+  const inner=document.getElementById(`cell-${caseNo}-${field}`);
+  inner.innerHTML=val!=null
+    ?`<div class="cell-val" style="color:${color}">${fmt(val)}</div><div class="cell-sub">✏️ click to edit</div>`
+    :`<div class="cell-val" style="color:var(--muted);font-size:12px">Click to enter ✏️</div>`;
+}
+
+function flashSave(caseNo){
+  const el=document.getElementById(`save-${caseNo}`);
+  if(!el)return;
+  el.className="save-indicator save-ok";
+  el.textContent="✓ saved";
+  setTimeout(()=>{el.textContent="";el.className="save-indicator"},2000);
+}
+
+// ─── REDRAW HELPERS ───────────────────────────
+function redrawBidPanel(caseNo){
+  const p=LISTINGS.find(x=>x.caseNo===caseNo);
+  if(!p)return;
+  const d=getProp(caseNo);
+  const val=d.myValue||d.estValue;
+  const spread=d.openingBid!=null&&val!=null?val-d.openingBid:null;
+  const spreadPct=spread!=null?Math.round((spread/val)*100):null;
+  const bidPct=d.openingBid!=null&&val!=null?Math.round((d.openingBid/val)*100):null;
+  const jgap=d.openingBid!=null&&d.judgmentAmt!=null?d.openingBid-d.judgmentAmt:null;
+
+  // Update spread cell
+  const sCell=document.querySelector(`#body-${caseNo} .bid-grid .bid-cell:last-child`);
+  if(sCell){
+    sCell.className=`bid-cell${spread!=null?(spread>20000?" spread-pos":spread>0?" spread-thin":" spread-neg"):""}`;
+    sCell.innerHTML=`<div class="cell-label">Spread (Bid → Value)</div>
+      <div class="cell-val" style="color:${spread!=null?(spread>20000?"var(--green)":spread>0?"var(--yellow)":"var(--red)"):"var(--muted)"}">
+        ${spread!=null?fmt(spread):"<span style='font-size:12px'>—</span>"}
+      </div>
+      ${spreadPct!=null?`<div class="cell-sub">${spreadPct}% below ${d.myValue?"my value":"AI est."}</div>`:""}`;
+  }
+  // Update AI value cell
+  const ai2Cell=document.querySelector(`#body-${caseNo} .bid-grid2 .bid-cell:first-child`);
+  if(ai2Cell){
+    ai2Cell.innerHTML=`<div class="cell-label">🤖 AI Est. Market Value</div>
+      <div class="cell-val" style="color:${d.estValue!=null?"var(--accent)":"var(--muted)"}">
+        ${d.estValue!=null?fmt(d.estValue):`<span style="font-size:12px;color:var(--muted)">Run AI Analysis ↓</span>`}
+      </div>
+      ${d.estValue!=null?`<div class="cell-sub">from AI · auto-updated on analysis</div>`:""}`;
+  }
+}
+
+function redrawFlags(caseNo){
+  const p=LISTINGS.find(x=>x.caseNo===caseNo);
+  if(!p)return;
+  const d=getProp(caseNo);
+  const flags=getFlags(p,d);
+  const fr=document.querySelector(`#body-${caseNo} .flags-row`);
+  if(fr)fr.innerHTML=flags.map(f=>`<span class="flag flag-${f.t}">${f.tx}</span>`).join("");
+}
+
+// ─── RESEARCH TABS ────────────────────────────
+function switchTab(btn,caseNo,tabName){
+  const p=LISTINGS.find(x=>x.caseNo===caseNo);
+  const links=buildLinks(p);
+  document.querySelectorAll(`#tabs-${caseNo} .tab-btn`).forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  document.getElementById(`links-${caseNo}`).innerHTML=
+    links[tabName].map(l=>`<a class="res-link" href="${l.h}" target="_blank">${l.i} ${l.l}</a>`).join("");
+}
+
+// ─── TAX PANEL ────────────────────────────────
+function toggleTax(caseNo,btn){
+  const panel=document.getElementById(`tax-${caseNo}`);
+  const showing=panel.style.display!=="none";
+  panel.style.display=showing?"none":"block";
+  btn.textContent=showing?"💰 Check Tax Panel":"💰 Hide Tax Panel";
+  btn.classList.toggle("active",!showing);
+}
+
+async function runTaxCheck(caseNo){
+  const p=LISTINGS.find(x=>x.caseNo===caseNo);
+  const yr=caseYear(p.caseNo);
+  const yrs=yr?2026-yr:0;
+  const cont=document.getElementById(`tax-content-${caseNo}`);
+  cont.innerHTML=`<div style="color:var(--muted);font-size:11px;padding:0 0 12px">⏳ Estimating tax balance…</div>`;
+  const key=getApiKey();
+  if(!key){cont.innerHTML=`<div style="color:var(--red);font-size:11px;padding:0 0 12px">⚠️ No API key saved. Add your key in the banner above.</div>`;return}
+  try{
+    const res=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",headers:{"Content-Type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,
+        system:`Return ONLY valid JSON, no markdown. Format: {"estimatedAnnualTax":number_or_null,"assessedValue":number_or_null,"delinquentYears":${yrs},"estimatedDelinquentBalance":number_or_null,"taxNotes":"string","confidence":"low"}`,
+        messages:[{role:"user",content:`Estimate property taxes for ${fullAddr(p)}, Parcel ${p.parcel}, Kenosha County WI. Case filed ${yr} (${yrs} years ago). Use WI average rates. Estimate delinquent balance at 1.5%/month. JSON only.`}]
+      })
+    });
+    const json=await res.json();
+    const txt=(json.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("").trim();
+    const s=txt.indexOf("{"),e=txt.lastIndexOf("}");
+    const td=JSON.parse(txt.slice(s,e+1));
+    cont.innerHTML=`<div class="tax-grid">
+      <div class="tax-cell"><div class="cell-label">Est. Annual Tax</div><div class="cell-val" style="color:var(--text)">${td.estimatedAnnualTax?fmt(td.estimatedAnnualTax)+"/yr":"Not found"}</div></div>
+      <div class="tax-cell"><div class="cell-label">Assessed Value</div><div class="cell-val" style="color:var(--text)">${td.assessedValue?fmt(td.assessedValue):"Search portal"}</div></div>
+      <div class="tax-cell"><div class="cell-label">Years Delinquent</div><div class="cell-val" style="color:var(--red)">~${td.delinquentYears} yrs</div></div>
+      <div class="tax-cell"><div class="cell-label">Est. Delinquent Balance</div><div class="cell-val" style="color:${td.estimatedDelinquentBalance>10000?"var(--red)":"var(--yellow)"}">${td.estimatedDelinquentBalance?fmt(td.estimatedDelinquentBalance):"Verify w/ county"}</div></div>
+    </div>
+    <div style="padding:0 14px 12px;font-size:11px;color:var(--muted);font-style:italic">📌 ${td.taxNotes}</div>
+    <div style="padding:0 14px 14px"><button class="btn-tax-check" style="margin:0" onclick="runTaxCheck('${caseNo}')">↻ Re-check</button></div>`;
+  }catch(e){
+    const est=Math.round(2800+Math.random()*1400);
+    const yrs2=yr?2026-yr:0;
+    cont.innerHTML=`<div style="padding:0 14px 14px;font-size:11px;color:var(--muted)">Could not fetch estimate. Call Treasurer: 262-653-2622<br><button class="btn-tax-check" style="margin-top:8px;margin-left:0" onclick="runTaxCheck('${caseNo}')">↻ Retry</button></div>`;
+  }
+}
+
+// ─── AI ANALYSIS ──────────────────────────────
+async function runAnalysis(caseNo){
+  const p=LISTINGS.find(x=>x.caseNo===caseNo);
+  const d=getProp(caseNo);
+  const yr=caseYear(p.caseNo);
+  const key=getApiKey();
+
+  const actRow=document.getElementById(`actions-${caseNo}`);
+
+  if(!key){
+    actRow.innerHTML+=`<span class="err-msg">⚠️ No API key — add it in the banner above, then retry.</span>`;
+    return;
+  }
+
+  // Show spinner
+  actRow.innerHTML=`<button class="btn-tax" onclick="toggleTax('${caseNo}',this)">💰 Check Tax Panel</button>
+    <div class="analyzing-row"><div class="spinner"></div><span style="color:var(--muted);font-size:11px">Analyzing ${p.address}… (5–20s)</span></div>`;
+
+  try{
+    const res=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+      body:JSON.stringify({
+        model:"claude-sonnet-4-20250514",
+        max_tokens:1000,
+        system:"You are a senior real estate investment analyst for Windy City Property Partners Inc., based in Chicago IL. You specialize in foreclosure acquisitions in the Midwest. Provide detailed, specific investment analysis using your knowledge of Wisconsin real estate markets and Kenosha County property values. Always use specific dollar figures. Be concise but thorough. Write in plain numbered sections — no markdown asterisks or headers.",
+        messages:[{role:"user",content:`Analyze this Kenosha County WI sheriff sale for an investor:
+
+PROPERTY: ${fullAddr(p)}
+CASE: ${p.caseNo} (filed ${yr}, ${2026-yr} years in foreclosure)
+DEFENDANT: ${p.defendant}
+SALE DATE: ${p.saleDate}
+PARCEL: ${p.parcel}
+JUDGMENT AMT: ${d.judgmentAmt?fmt(d.judgmentAmt):"Not entered"}
+OPENING BID: ${d.openingBid?fmt(d.openingBid):"Not entered"}
+MY OPINION OF VALUE: ${d.myValue?fmt(d.myValue):"Not set"}
+
+Analyze covering these 6 points in plain text:
+
+1. ESTIMATED MARKET VALUE — Based on your knowledge of Kenosha WI ${p.zip}, give as-is value and ARV range with specific dollar amounts.
+
+2. BID vs VALUE — ${d.openingBid?`Opening bid is ${fmt(d.openingBid)}.`:"No bid entered."} ${d.myValue?`My opinion of value is ${fmt(d.myValue)}.`:""} Is this a deal? What is the profit potential after repairs and carrying costs?
+
+3. RENOVATION FLAGS — Case filed ${yr}, ${2026-yr} years ago, property in distress. What systems likely need work? Estimate repair budget range.
+
+4. TITLE & LIEN RISKS — Key things to check in WCCA case ${p.caseNo}. Risks from a ${2026-yr}-year foreclosure timeline.
+
+5. NEIGHBORHOOD — ${p.city}, WI ${p.zip}. Investment character, owner/renter mix, rental demand.
+
+6. VERDICT — Strong Buy / Proceed with Caution / Pass — one clear sentence.`}]
+      })
+    });
+
+    if(!res.ok){const et=await res.text();throw new Error(`HTTP ${res.status}: ${et.slice(0,200)}`)}
+    const json=await res.json();
+    const textBlocks=(json.content||[]).filter(b=>b.type==="text");
+    if(!textBlocks.length)throw new Error(`No text in response. stop_reason: ${json.stop_reason}`);
+    const text=textBlocks.map(b=>b.text).join("\n").trim();
+    if(text.length<100)throw new Error("Response too short: "+text.slice(0,100));
+
+    // Extract estimated value
+    let ev=null;
+    for(const m of [...text.matchAll(/\$([\d,]{4,})/g)]){
+      const v=parseFloat(m[1].replace(/,/g,""));
+      if(v>=60000&&v<=900000){ev=v;break}
+    }
+
+    setProp(caseNo,{analysis:text,analysisDate:new Date().toLocaleDateString(),...(ev?{estValue:ev}:{})});
+    flashSave(caseNo);
+
+    // Update analysis panel
+    document.getElementById(`analysis-${caseNo}`).innerHTML=`<div class="analysis-panel">
+      <div class="analysis-header">
+        <span class="analysis-title">🤖 AI Analysis — ${p.caseNo}</span>
+        <span class="analysis-saved">✓ saved ${new Date().toLocaleDateString()} · persists across sessions</span>
+      </div>
+      <div class="analysis-body">${text.replace(/</g,"&lt;")}</div>
+    </div>`;
+
+    // Restore action row
+    actRow.innerHTML=`<button class="btn-tax" onclick="toggleTax('${caseNo}',this)">💰 Check Tax Panel</button>
+      <button class="btn-reanalyze" onclick="runAnalysis('${caseNo}')">↻ Re-Analyze</button>`;
+
+    redrawBidPanel(caseNo);
+    redrawFlags(caseNo);
+    updateCardHeader(p,document.getElementById(`head-${caseNo}`));
+
+  }catch(err){
+    actRow.innerHTML=`<button class="btn-tax" onclick="toggleTax('${caseNo}',this)">💰 Check Tax Panel</button>
+      <button class="btn-analyze" onclick="runAnalysis('${caseNo}')">🤖 Run AI Analysis</button>
+      <span class="err-msg">⚠️ ${err.message}</span>
+      <button class="btn-retry" onclick="runAnalysis('${caseNo}')">↻ Retry</button>`;
+  }
+}
+
+// ─── NOTES ────────────────────────────────────
+function editNotes(caseNo){
+  const d=getProp(caseNo);
+  const body=document.getElementById(`notes-body-${caseNo}`);
+  const btns=document.getElementById(`notes-btns-${caseNo}`);
+  body.innerHTML=`<textarea class="notes-textarea" id="nt-${caseNo}" placeholder="Comps, condition, drive-by notes, bid strategy, contacts…">${d.notes||""}</textarea>`;
+  btns.innerHTML=`<button class="btn-save-notes" onclick="saveNotes('${caseNo}')">💾 Save</button>
+    <button class="btn-cancel-notes" onclick="cancelNotes('${caseNo}')">Cancel</button>`;
+  document.getElementById(`nt-${caseNo}`).focus();
+}
+
+function saveNotes(caseNo){
+  const val=document.getElementById(`nt-${caseNo}`)?.value||"";
+  setProp(caseNo,{notes:val});
+  flashSave(caseNo);
+  const box=document.getElementById(`notes-box-${caseNo}`);
+  box.classList.add("flash");
+  setTimeout(()=>box.classList.remove("flash"),1200);
+  const body=document.getElementById(`notes-body-${caseNo}`);
+  const btns=document.getElementById(`notes-btns-${caseNo}`);
+  body.innerHTML=val.trim()?`<div class="notes-text">${val.replace(/</g,"&lt;")}</div>`:`<div class="notes-empty">No notes yet.</div>`;
+  btns.innerHTML=`<span class="saved-flash">✓ Saved</span><button class="btn-edit" onclick="editNotes('${caseNo}')" style="margin-left:6px">${val.trim()?"✏️ Edit":"✏️ Add Notes"}</button>`;
+  setTimeout(()=>{
+    btns.innerHTML=`<button class="btn-edit" onclick="editNotes('${caseNo}')">${val.trim()?"✏️ Edit":"✏️ Add Notes"}</button>`;
+  },2000);
+  updateCardHeader(LISTINGS.find(p=>p.caseNo===caseNo),document.getElementById(`head-${caseNo}`));
+}
+
+function cancelNotes(caseNo){
+  const d=getProp(caseNo);
+  const body=document.getElementById(`notes-body-${caseNo}`);
+  const btns=document.getElementById(`notes-btns-${caseNo}`);
+  body.innerHTML=d.notes?.trim()?`<div class="notes-text">${d.notes.replace(/</g,"&lt;")}</div>`:`<div class="notes-empty">No notes yet.</div>`;
+  btns.innerHTML=`<button class="btn-edit" onclick="editNotes('${caseNo}')">${d.notes?.trim()?"✏️ Edit":"✏️ Add Notes"}</button>`;
+}
+
+// ─── BIND CARD (after DOM insert) ────────────
+function bindCard(p){
+  // nothing extra needed — all handlers are inline onclick
+}
+
+// ─── INIT ─────────────────────────────────────
+function init(){
+  initApiKey();
+  renderQuickLinks();
+  renderListings();
+  updateStats();
+}
+
+init();
+</script>
+</body>
+</html>
